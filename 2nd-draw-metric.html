@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Isometric Perspective Grid</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column; /* Stack everything vertically */
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+            font-family: Arial, sans-serif;
+            color: #333;
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap; /* Allow controls to wrap to the next line if needed */
+            justify-content: center; /* Center the controls horizontally */
+            align-items: center;
+            width: 100%;
+            max-width: 1000px;
+            padding: 10px;
+            background-color: #ffffff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            margin-bottom: 20px; /* Add some space between controls and canvas */
+        }
+
+        .controls > * {
+            margin: 5px 10px; /* Add consistent spacing between controls */
+        }
+
+        canvas {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin-top: 20px;
+            max-width: 100%; /* Ensure canvas is responsive */
+            max-height: 100%; /* Ensure canvas is responsive */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+
+        .textarea-container {
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 200px;
+            margin-top: 10px;
+            padding: 10px;
+            font-family: monospace;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+            background-color: #ffffff;
+        }
+
+        .tileset-display {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center; /* Center the tileset display */
+            gap: 10px; /* Add space between tiles */
+            max-width: 100%; /* Ensure the display uses full width */
+            margin-top: 20px; /* Add space above the tileset display */
+        }
+
+        .tile {
+            text-align: center;
+            flex: 1 1 auto; /* Allow tiles to grow and shrink */
+            max-width: 100px; /* Set a max width for each tile */
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .tile canvas {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%; /* Make canvas take full width of the container */
+            height: auto; /* Maintain aspect ratio */
+            transition: none; /* Remove any transition effect */
+        }
+
+        .tile canvas:hover {
+            transform: none; /* Disable the zoom effect */
+            box-shadow: none; /* Remove the shadow effect */
+            z-index: auto; /* Ensure no z-index manipulation */
+            position: static; /* Keep the tile in its normal position */
+        }
+
+
+        input[type="range"], 
+        input[type="number"], 
+        button {
+            margin: 10px;
+            padding: 8px 12px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            font-size: 14px;
+            background-color: #f9f9f9;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        input[type="range"]:hover, 
+        input[type="number"]:hover, 
+        button:hover {
+            background-color: #e0e0e0;
+        }
+
+        label {
+            margin: 10px;
+            font-weight: bold;
+        }
+
+        button {
+            background-color: #007bff;
+            color: #ffffff;
+            border: none;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <label for="tileWidth">Tile Width (N): <span id="tileWidthValue">32</span></label>
+        <input type="range" id="tileWidth" min="4" max="1000" value="32">
+        <input type="number" id="tileWidthInput" min="4" max="1000" value="32">
+
+        <label for="tileHeight">Tile Height (M): <span id="tileHeightValue">32</span></label>
+        <input type="range" id="tileHeight" min="4" max="1000" value="32">
+        <input type="number" id="tileHeightInput" min="4" max="1000" value="32">
+
+        <div>
+        <label for="fileInput">Grid Positions (.tsv, .csv, space, or ; delimited):</label>
+        <input type="file" id="fileInput" accept=".tsv, .csv, .txt">
+        </div>
+
+        <div>
+        <label for="imageInput">Tileset Image:</label>
+        <input type="file" id="imageInput" accept="image/*">
+        </div>
+
+        <button id="generateGridButton">Generate Random 20x20 Grid</button>
+        <button id="saveButton">Save Grid .tsv</button>
+
+        <button id="downloadPngButton">Download PNG</button>
+
+        <canvas id="canvas"></canvas>
+        
+        <div class="textarea-container">
+            <label for="tsvEditor">Edit Grid Content:</label>
+            <textarea id="tsvEditor"></textarea>
+        </div>
+
+        <div class="tileset-display" id="tilesetDisplay"></div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        let tileWidth = parseInt(document.getElementById('tileWidth').value);
+        let tileHeight = parseInt(document.getElementById('tileHeight').value);
+        let tilesetImage;
+        let grid = [];
+        let selectedTileIndex = null;
+
+        const tileWidthDisplay = document.getElementById('tileWidthValue');
+        const tileHeightDisplay = document.getElementById('tileHeightValue');
+        const tilesetDisplay = document.getElementById('tilesetDisplay');
+        const tsvEditor = document.getElementById('tsvEditor');
+        const saveButton = document.getElementById('saveButton');
+
+        document.getElementById('tileWidth').addEventListener('input', () => {
+            tileWidth = parseInt(document.getElementById('tileWidth').value);
+            tileWidthDisplay.textContent = tileWidth;
+            document.getElementById('tileWidthInput').value = tileWidth;
+            if (grid.length > 0 && tilesetImage) drawGrid();
+            if (tilesetImage) displayTileset();
+        });
+
+        document.getElementById('tileWidthInput').addEventListener('input', () => {
+            tileWidth = parseInt(document.getElementById('tileWidthInput').value);
+            tileWidthDisplay.textContent = tileWidth;
+            document.getElementById('tileWidth').value = tileWidth;
+            if (grid.length > 0 && tilesetImage) drawGrid();
+            if (tilesetImage) displayTileset();
+        });
+
+        document.getElementById('tileHeight').addEventListener('input', () => {
+            tileHeight = parseInt(document.getElementById('tileHeight').value);
+            tileHeightDisplay.textContent = tileHeight;
+            document.getElementById('tileHeightInput').value = tileHeight;
+            if (grid.length > 0 && tilesetImage) drawGrid();
+            if (tilesetImage) displayTileset();
+        });
+
+        document.getElementById('tileHeightInput').addEventListener('input', () => {
+            tileHeight = parseInt(document.getElementById('tileHeightInput').value);
+            tileHeightDisplay.textContent = tileHeight;
+            document.getElementById('tileHeight').value = tileHeight;
+            if (grid.length > 0 && tilesetImage) drawGrid();
+            if (tilesetImage) displayTileset();
+        });
+
+        document.getElementById('fileInput').addEventListener('change', handleFile);
+        document.getElementById('imageInput').addEventListener('change', handleImage);
+        saveButton.addEventListener('click', saveGrid);
+
+        document.getElementById('generateGridButton').addEventListener('click', generateRandomGrid);
+
+        // Function to download the canvas as a PNG file
+        document.getElementById('downloadPngButton').addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = 'grid.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        });
+
+        tsvEditor.addEventListener('input', () => {
+            const text = tsvEditor.value.trim();
+            grid = parseText(text);
+            if (tilesetImage) drawGrid();
+        });
+
+        canvas.addEventListener('click', handleCanvasClick);
+
+        function handleFile(event) {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                const delimiter = detectDelimiter(text);
+                const parsedText = text.split('\n').map(line => line.trim().split(delimiter));
+                grid = parsedText;
+                tsvEditor.value = text.replace(new RegExp(delimiter, 'g'), ' ');
+                if (tilesetImage) drawGrid();
+            };
+            reader.readAsText(file);
+        }
+
+        function handleImage(event) {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                tilesetImage = new Image();
+                tilesetImage.onload = function() {
+                    displayTileset();
+                    if (grid.length > 0) drawGrid();
+                };
+                tilesetImage.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function parseText(text) {
+            return text.trim().split('\n').map(line => line.trim().split(/\s+/));
+        }
+
+        function detectDelimiter(text) {
+            const delimiters = [',', '\t', ';', ' '];
+            const counts = delimiters.map(d => (text.split(d).length - 1));
+            const maxCount = Math.max(...counts);
+            return delimiters[counts.indexOf(maxCount)];
+        }
+
+        function drawGrid() {
+            const rows = grid.length;
+            const cols = grid[0].length;
+
+            const canvasWidth = (cols + 1) * tileWidth;
+            const canvasHeight = (rows + 1) * tileHeight / 2;
+
+            canvas.width = canvasWidth;
+            canvas.height = canvasHeight;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            for (let row = 0; row < rows; row++) {
+                for (let col = 0; col < cols; col++) {
+                    const tileIndex = parseInt(grid[row][col]);
+                    if (!isNaN(tileIndex)) {
+                        const sx = (tileIndex % (tilesetImage.width / tileWidth)) * tileWidth;
+                        const sy = Math.floor(tileIndex / (tilesetImage.width / tileWidth)) * tileHeight;
+                        drawTile(row, col, sx, sy);
+                    }
+                }
+            }
+        }
+
+        function drawTile(row, col, sx, sy) {
+            const xIso = (col - row) * (tileWidth / 2);
+            const yIso = (col + row) * (tileHeight / 4);
+
+            ctx.drawImage(
+                tilesetImage,
+                sx, sy, tileWidth, tileHeight,
+                xIso + canvas.width / 2 - tileWidth / 2, yIso,
+                tileWidth, tileHeight
+            );
+        }
+
+        function displayTileset() {
+            tilesetDisplay.innerHTML = '';
+            const cols = Math.floor(tilesetImage.width / tileWidth);
+            const rows = Math.floor(tilesetImage.height / tileHeight);
+            let tileIndex = 0;
+
+            for (let row = 0; row < rows; row++) {
+                for (let col = 0; col < cols; col++) {
+                    const tileCanvas = document.createElement('canvas');
+                    tileCanvas.width = tileWidth;
+                    tileCanvas.height = tileHeight;
+                    const tileCtx = tileCanvas.getContext('2d');
+
+                    const sx = col * tileWidth;
+                    const sy = row * tileHeight;
+                    tileCtx.drawImage(
+                        tilesetImage,
+                        sx, sy, tileWidth, tileHeight,
+                        0, 0, tileWidth, tileHeight
+                    );
+
+                    const tileDiv = document.createElement('div');
+                    tileDiv.className = 'tile';
+                    tileDiv.appendChild(tileCanvas);
+                    const label = document.createElement('div');
+                    label.textContent = `Tile ${tileIndex}`;
+                    tileDiv.appendChild(label);
+
+                    tileDiv.addEventListener('click', () => selectTile(tileIndex, tileDiv));
+
+                    tilesetDisplay.appendChild(tileDiv);
+
+                    tileIndex++;
+                }
+            }
+        }
+
+        function selectTile(tileIndex, tileDiv) {
+            selectedTileIndex = tileIndex;
+
+            // Remove selection from all other tiles
+            document.querySelectorAll('.tile canvas').forEach(canvas => {
+                canvas.classList.remove('selected-tile');
+            });
+
+            // Highlight the selected tile
+            tileDiv.querySelector('canvas').classList.add('selected-tile');
+        }
+
+        function handleCanvasClick(event) {
+            if (selectedTileIndex === null) return;
+
+            const canvasRect = canvas.getBoundingClientRect();
+            const x = event.clientX - canvasRect.left;
+            const y = event.clientY - canvasRect.top;
+
+            const col = Math.floor(x / tileWidth);
+            const row = Math.floor((y - (col * tileHeight / 2)) / (tileHeight / 2));
+
+            if (row >= 0 && row < grid.length && col >= 0 && col < grid[0].length) {
+                grid[row][col] = selectedTileIndex;
+                tsvEditor.value = grid.map(row => row.join(' ')).join('\n');
+                drawGrid();
+            }
+        }
+
+        function saveGrid() {
+            const tsvContent = grid.map(row => row.join('\t')).join('\n');
+            const blob = new Blob([tsvContent], { type: 'text/tab-separated-values' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'grid.tsv';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function generateRandomGrid() {
+            const rows = 20;
+            const cols = 20;
+            grid = Array.from({ length: rows }, () =>
+                Array.from({ length: cols }, () =>
+                    Math.floor(Math.random() * (tilesetImage ? (tilesetImage.width / tileWidth) * (tilesetImage.height / tileHeight) : 10))
+                )
+            );
+            tsvEditor.value = grid.map(row => row.join(' ')).join('\n');
+            drawGrid();
+        }
+    </script>
+</body>
+</html>
