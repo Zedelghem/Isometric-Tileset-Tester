@@ -8,3 +8,8 @@ __Motivation:__ I just wanted to check if a bunch of tilesets would tile smoothl
 Just open it in your browser. Tested only in Chrome.
 
 Example tileset included by: [scrabbling](https://scrabling.itch.io/pixel-isometric-tiles).
+
+The /src folder contains a tidy version of the project split into separate HTML, CSS and JS files, if anyone ever feels inclined to modify it or plans to serve it.
+
+If you plan to distribute it to your proofreaders, it can later be merged, e.g. using [htmlmerge](https://github.com/LukasWillin/htmlmerge).
+

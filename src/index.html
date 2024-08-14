@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Isometric Perspective Grid</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="controls">
+        <label for="tileWidth">Tile Width (N): <span id="tileWidthValue">32</span></label>
+        <input type="range" id="tileWidth" min="4" max="1000" value="32">
+        <input type="number" id="tileWidthInput" min="4" max="1000" value="32">
+
+        <label for="tileHeight">Tile Height (M): <span id="tileHeightValue">32</span></label>
+        <input type="range" id="tileHeight" min="4" max="1000" value="32">
+        <input type="number" id="tileHeightInput" min="4" max="1000" value="32">
+
+        <div>
+            <label for="fileInput">Grid Positions (.tsv, .csv, space, or ; delimited):</label>
+            <input type="file" id="fileInput" accept=".tsv, .csv, .txt">
+        </div>
+
+        <div>
+            <label for="imageInput">Tileset Image:</label>
+            <input type="file" id="imageInput" accept="image/*">
+        </div>
+
+        <button id="generateGridButton">Generate Random 20x20 Grid</button>
+        <button id="saveButton">Save Grid .tsv</button>
+        <button id="downloadPngButton">Download PNG</button>
+
+        <canvas id="canvas"></canvas>
+        
+        <div class="textarea-container">
+            <label for="tsvEditor">Edit Grid Content:</label>
+            <textarea id="tsvEditor"></textarea>
+        </div>
+
+        <div class="tileset-display" id="tilesetDisplay"></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
