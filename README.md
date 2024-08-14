@@ -1,7 +1,7 @@
 # Isometric Tileset Tester
  A single-file, browser-based tool to rapidly assess isometric tilesets and allow simple editing.
 
- ![](showcase.gif)
+ ![](assets/showcase.gif)
 
 __Motivation:__ I just wanted to check if a bunch of tilesets would tile smoothly and quickly experiment with how to cut them. It's a simple task, why should you install a 100MB+ tool to do it?
 
