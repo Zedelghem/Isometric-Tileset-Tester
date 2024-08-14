@@ -3,7 +3,7 @@
 
  ![](showcase.gif)
 
-__Motivation:__ I just wanted to check if a bunch of tilesets will tile smoothly and quickly experiment with how to cut them. It's a simple task, why should I install a 100MB+ tool to do it?
+__Motivation:__ I just wanted to check if a bunch of tilesets would tile smoothly and quickly experiment with how to cut them. It's a simple task, why should you install a 100MB+ tool to do it?
 
 Just open it in your browser. Tested only in Chrome.
 
