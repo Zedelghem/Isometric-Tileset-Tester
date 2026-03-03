@@ -5,9 +5,9 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Isometric Perspective Grid</title>
         <style>
-            * {
+            /** {
                 box-sizing: border-box;
-            }
+            }*/
 
             body {
                 display: flex;
@@ -351,39 +351,39 @@
         <div class="main-content">
             <div class="controls">
                 <label for="tileWidth"
-                    >Tile Width: <span id="tileWidthValue">32</span></label
+                    >Tile Width: <span id="tileWidthValue">64</span></label
                 >
                 <input
                     type="range"
                     id="tileWidth"
                     min="4"
                     max="1000"
-                    value="32"
+                    value="64"
                 />
                 <input
                     type="number"
                     id="tileWidthInput"
                     min="4"
                     max="1000"
-                    value="32"
+                    value="64"
                 />
 
                 <label for="tileHeight"
-                    >Tile Height: <span id="tileHeightValue">32</span></label
+                    >Tile Height: <span id="tileHeightValue">64</span></label
                 >
                 <input
                     type="range"
                     id="tileHeight"
                     min="4"
                     max="1000"
-                    value="32"
+                    value="64"
                 />
                 <input
                     type="number"
                     id="tileHeightInput"
                     min="4"
                     max="1000"
-                    value="32"
+                    value="64"
                 />
 
                 <div class="crop-group">
@@ -723,6 +723,14 @@
                 reader.onload = function (e) {
                     tilesetImage = new Image();
                     tilesetImage.onload = function () {
+                        tileWidth = 64;
+                        tileHeight = 64;
+                        document.getElementById("tileWidth").value = 64;
+                        document.getElementById("tileWidthInput").value = 64;
+                        tileWidthDisplay.textContent = 64;
+                        document.getElementById("tileHeight").value = 64;
+                        document.getElementById("tileHeightInput").value = 64;
+                        tileHeightDisplay.textContent = 64;
                         displayTileset();
                         if (grid.length > 0) drawGrid();
                     };
