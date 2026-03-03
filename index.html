@@ -1,0 +1,1031 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Isometric Perspective Grid</title>
+        <style>
+            * {
+                box-sizing: border-box;
+            }
+
+            body {
+                display: flex;
+                margin: 0;
+                padding: 0;
+                background-color: #f4f4f4;
+                font-family: Arial, sans-serif;
+                color: #333;
+                height: 100vh;
+            }
+
+            .sidebar {
+                width: 250px;
+                background-color: #ffffff;
+                border-right: 1px solid #ddd;
+                display: flex;
+                flex-direction: column;
+                box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+            }
+
+            .sidebar-header {
+                padding: 15px;
+                border-bottom: 1px solid #ddd;
+                font-weight: bold;
+                background-color: #f9f9f9;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+
+            #tileCount {
+                font-weight: normal;
+                font-size: 0.9em;
+                color: #666;
+            }
+
+            .tileset-display {
+                flex: 1;
+                overflow-y: auto;
+                padding: 8px;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+                align-content: start;
+            }
+
+            .tile {
+                text-align: center;
+                border-radius: 4px;
+                overflow: hidden;
+                border: 1px solid #ddd;
+                transition: all 0.2s;
+                display: flex;
+                flex-direction: column;
+                height: fit-content;
+            }
+
+            .tile:hover {
+                box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+            }
+
+            .tile-canvas-wrapper {
+                flex: 1;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                min-height: 60px;
+                padding: 4px;
+            }
+
+            .tile canvas {
+                display: block;
+                max-width: 100%;
+                max-height: 100%;
+                cursor: pointer;
+                border-radius: 2px;
+            }
+
+            .tile canvas.selected-tile {
+                border: 2px solid #007bff;
+                outline: 2px solid #0056b3;
+            }
+
+            .tile-label {
+                font-size: 11px;
+                padding: 4px;
+                background-color: #f9f9f9;
+                color: #666;
+                border-top: 1px solid #eee;
+                flex-shrink: 0;
+            }
+
+            .main-content {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+            }
+
+            .controls {
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: center;
+                align-items: center;
+                padding: 15px;
+                background-color: #ffffff;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                max-height: 300px;
+                overflow-y: auto;
+                gap: 10px;
+            }
+
+            .controls > * {
+                margin: 5px 5px;
+            }
+
+            .crop-group {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 5px;
+                align-items: center;
+                background-color: #f9f9f9;
+                padding: 8px 12px;
+                border-radius: 4px;
+                border: 1px solid #e0e0e0;
+            }
+
+            .crop-group label {
+                margin: 0;
+                font-weight: bold;
+                font-size: 12px;
+                white-space: nowrap;
+            }
+
+            .crop-group input {
+                margin: 0;
+                padding: 4px 6px;
+                font-size: 12px;
+                width: 45px;
+            }
+
+            .crop-group input[type="number"] {
+                width: 50px;
+            }
+
+            .canvas-container {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                padding: 20px;
+                background-color: #f4f4f4;
+                gap: 15px;
+                position: relative;
+                overflow: hidden;
+            }
+
+            .canvas-wrapper {
+                flex: 1;
+                position: relative;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: grab;
+                user-select: none;
+                overflow: hidden;
+            }
+
+            .canvas-wrapper.dragging {
+                cursor: grabbing;
+            }
+
+            .canvas-viewport {
+                position: relative;
+                overflow: hidden;
+                width: 100%;
+                height: 100%;
+            }
+
+            .zoom-controls {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                background-color: #ffffff;
+                padding: 10px 15px;
+                border-radius: 6px;
+                box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+            }
+
+            .zoom-controls label {
+                font-weight: bold;
+                font-size: 14px;
+                margin: 0;
+            }
+
+            .zoom-controls button {
+                padding: 6px 12px;
+                font-size: 14px;
+                min-width: 40px;
+            }
+
+            .zoom-controls input[type="range"] {
+                width: 150px;
+                margin: 0;
+            }
+
+            #zoomValue {
+                font-weight: bold;
+                min-width: 40px;
+                text-align: center;
+            }
+
+            .zoom-controls button:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+            }
+
+            canvas {
+                border: 2px solid #ddd;
+                border-radius: 8px;
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+                max-width: 100%;
+                max-height: 100%;
+            }
+
+            .textarea-container {
+                position: fixed;
+                bottom: 0;
+                left: 250px;
+                right: 0;
+                background-color: #ffffff;
+                border-top: 2px solid #ddd;
+                max-height: 45px;
+                overflow: hidden;
+                transition: max-height 0.3s ease;
+                z-index: 100;
+            }
+
+            .textarea-container.expanded {
+                max-height: 300px;
+            }
+
+            .textarea-container.collapsed {
+                max-height: 45px;
+            }
+
+            .textarea-header {
+                padding: 10px 15px;
+                font-weight: bold;
+                cursor: pointer;
+                background-color: #f9f9f9;
+                user-select: none;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-bottom: 1px solid #eee;
+                min-height: 45px;
+                flex-shrink: 0;
+            }
+
+            .textarea-header:hover {
+                background-color: #f0f0f0;
+            }
+
+            .textarea-content {
+                padding: 10px 15px;
+                overflow-y: auto;
+                max-height: 250px;
+            }
+
+            textarea {
+                width: 100%;
+                height: 100%;
+                padding: 10px;
+                font-family: monospace;
+                border: none;
+                border-radius: 0;
+                box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+                background-color: #ffffff;
+                resize: none;
+            }
+
+            input[type="range"],
+            input[type="number"],
+            button {
+                margin: 5px;
+                padding: 8px 12px;
+                border-radius: 4px;
+                border: 1px solid #ddd;
+                font-size: 14px;
+                background-color: #f9f9f9;
+                cursor: pointer;
+                transition: background-color 0.3s;
+            }
+
+            input[type="range"]:hover,
+            input[type="number"]:hover,
+            button:hover {
+                background-color: #e0e0e0;
+            }
+
+            label {
+                margin: 5px 10px;
+                font-weight: bold;
+                white-space: nowrap;
+            }
+
+            button {
+                background-color: #007bff;
+                color: #ffffff;
+                border: none;
+                font-weight: bold;
+            }
+
+            button:hover {
+                background-color: #0056b3;
+            }
+
+            .file-input-group {
+                display: flex;
+                flex-direction: column;
+                gap: 5px;
+            }
+
+            .file-input-group label {
+                margin: 0;
+            }
+
+            .file-input-group input {
+                margin: 0;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="sidebar">
+            <div class="sidebar-header">
+                Tiles Preview <span id="tileCount">(0)</span>
+            </div>
+            <div class="tileset-display" id="tilesetDisplay"></div>
+        </div>
+
+        <div class="main-content">
+            <div class="controls">
+                <label for="tileWidth"
+                    >Tile Width: <span id="tileWidthValue">32</span></label
+                >
+                <input
+                    type="range"
+                    id="tileWidth"
+                    min="4"
+                    max="1000"
+                    value="32"
+                />
+                <input
+                    type="number"
+                    id="tileWidthInput"
+                    min="4"
+                    max="1000"
+                    value="32"
+                />
+
+                <label for="tileHeight"
+                    >Tile Height: <span id="tileHeightValue">32</span></label
+                >
+                <input
+                    type="range"
+                    id="tileHeight"
+                    min="4"
+                    max="1000"
+                    value="32"
+                />
+                <input
+                    type="number"
+                    id="tileHeightInput"
+                    min="4"
+                    max="1000"
+                    value="32"
+                />
+
+                <div class="crop-group">
+                    <label>Spritesheet Crop:</label>
+                    <label
+                        >T:
+                        <input
+                            type="number"
+                            id="spritesheetCropTop"
+                            min="0"
+                            max="100"
+                            value="0"
+                    /></label>
+                    <label
+                        >B:
+                        <input
+                            type="number"
+                            id="spritesheetCropBottom"
+                            min="0"
+                            max="100"
+                            value="0"
+                    /></label>
+                    <label
+                        >L:
+                        <input
+                            type="number"
+                            id="spritesheetCropLeft"
+                            min="0"
+                            max="100"
+                            value="0"
+                    /></label>
+                    <label
+                        >R:
+                        <input
+                            type="number"
+                            id="spritesheetCropRight"
+                            min="0"
+                            max="100"
+                            value="0"
+                    /></label>
+                </div>
+
+                <div class="crop-group">
+                    <label>Tile Crop:</label>
+                    <label
+                        >T:
+                        <input
+                            type="number"
+                            id="tileCropTop"
+                            min="0"
+                            max="100"
+                            value="0"
+                    /></label>
+                    <label
+                        >B:
+                        <input
+                            type="number"
+                            id="tileCropBottom"
+                            min="0"
+                            max="100"
+                            value="0"
+                    /></label>
+                    <label
+                        >L:
+                        <input
+                            type="number"
+                            id="tileCropLeft"
+                            min="0"
+                            max="100"
+                            value="0"
+                    /></label>
+                    <label
+                        >R:
+                        <input
+                            type="number"
+                            id="tileCropRight"
+                            min="0"
+                            max="100"
+                            value="0"
+                    /></label>
+                </div>
+
+                <div class="file-input-group">
+                    <label for="fileInput">Grid (.tsv, .csv, space, ;):</label>
+                    <input
+                        type="file"
+                        id="fileInput"
+                        accept=".tsv, .csv, .txt"
+                    />
+                </div>
+
+                <div class="file-input-group">
+                    <label for="imageInput">Tileset Image:</label>
+                    <input type="file" id="imageInput" accept="image/*" />
+                </div>
+
+                <button id="generateGridButton">Generate 20x20 Grid</button>
+                <button id="saveButton">Save .tsv</button>
+                <button id="downloadPngButton">Download PNG</button>
+            </div>
+
+            <div class="canvas-container">
+                <div class="zoom-controls">
+                    <label>Zoom:</label>
+                    <button id="zoomOutBtn">−</button>
+                    <input
+                        type="range"
+                        id="zoomSlider"
+                        min="25"
+                        max="400"
+                        value="100"
+                    />
+                    <span id="zoomValue">100%</span>
+                    <button id="zoomInBtn">+</button>
+                    <button id="zoomResetBtn">Reset</button>
+                </div>
+                <div class="canvas-wrapper" id="canvasWrapper">
+                    <div class="canvas-viewport">
+                        <canvas id="canvas"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="textarea-container collapsed" id="textareaContainer">
+            <div class="textarea-header" id="textareaToggle">
+                <span>Edit Grid</span>
+                <span id="toggleIcon">▼</span>
+            </div>
+            <div class="textarea-content">
+                <textarea id="tsvEditor"></textarea>
+            </div>
+        </div>
+
+        <script>
+            const canvas = document.getElementById("canvas");
+            const ctx = canvas.getContext("2d");
+            let tileWidth = parseInt(
+                document.getElementById("tileWidth").value,
+            );
+            let tileHeight = parseInt(
+                document.getElementById("tileHeight").value,
+            );
+
+            let spritesheetCrop = {
+                top: parseInt(
+                    document.getElementById("spritesheetCropTop").value,
+                ),
+                bottom: parseInt(
+                    document.getElementById("spritesheetCropBottom").value,
+                ),
+                left: parseInt(
+                    document.getElementById("spritesheetCropLeft").value,
+                ),
+                right: parseInt(
+                    document.getElementById("spritesheetCropRight").value,
+                ),
+            };
+
+            let tileCrop = {
+                top: parseInt(document.getElementById("tileCropTop").value),
+                bottom: parseInt(
+                    document.getElementById("tileCropBottom").value,
+                ),
+                left: parseInt(document.getElementById("tileCropLeft").value),
+                right: parseInt(document.getElementById("tileCropRight").value),
+            };
+
+            let tilesetImage;
+            let grid = [];
+            let selectedTileIndex = null;
+            let currentZoom = 100;
+            let isDragging = false;
+            let dragStartX = 0;
+            let dragStartY = 0;
+            let panX = 0;
+            let panY = 0;
+
+            const tileWidthDisplay = document.getElementById("tileWidthValue");
+            const tileHeightDisplay =
+                document.getElementById("tileHeightValue");
+            const tilesetDisplay = document.getElementById("tilesetDisplay");
+            const tsvEditor = document.getElementById("tsvEditor");
+            const saveButton = document.getElementById("saveButton");
+
+            // Tile dimension listeners
+            document
+                .getElementById("tileWidth")
+                .addEventListener("input", () => {
+                    tileWidth = parseInt(
+                        document.getElementById("tileWidth").value,
+                    );
+                    tileWidthDisplay.textContent = tileWidth;
+                    document.getElementById("tileWidthInput").value = tileWidth;
+                    if (grid.length > 0 && tilesetImage) drawGrid();
+                    if (tilesetImage) displayTileset();
+                });
+
+            document
+                .getElementById("tileWidthInput")
+                .addEventListener("input", () => {
+                    tileWidth = parseInt(
+                        document.getElementById("tileWidthInput").value,
+                    );
+                    tileWidthDisplay.textContent = tileWidth;
+                    document.getElementById("tileWidth").value = tileWidth;
+                    if (grid.length > 0 && tilesetImage) drawGrid();
+                    if (tilesetImage) displayTileset();
+                });
+
+            document
+                .getElementById("tileHeight")
+                .addEventListener("input", () => {
+                    tileHeight = parseInt(
+                        document.getElementById("tileHeight").value,
+                    );
+                    tileHeightDisplay.textContent = tileHeight;
+                    document.getElementById("tileHeightInput").value =
+                        tileHeight;
+                    if (grid.length > 0 && tilesetImage) drawGrid();
+                    if (tilesetImage) displayTileset();
+                });
+
+            document
+                .getElementById("tileHeightInput")
+                .addEventListener("input", () => {
+                    tileHeight = parseInt(
+                        document.getElementById("tileHeightInput").value,
+                    );
+                    tileHeightDisplay.textContent = tileHeight;
+                    document.getElementById("tileHeight").value = tileHeight;
+                    if (grid.length > 0 && tilesetImage) drawGrid();
+                    if (tilesetImage) displayTileset();
+                });
+
+            // Spritesheet crop listeners
+            ["Top", "Bottom", "Left", "Right"].forEach((side) => {
+                const lowerSide = side.toLowerCase();
+                document
+                    .getElementById(`spritesheetCrop${side}`)
+                    .addEventListener("input", (e) => {
+                        spritesheetCrop[lowerSide] = parseInt(e.target.value);
+                        if (grid.length > 0 && tilesetImage) drawGrid();
+                        if (tilesetImage) displayTileset();
+                    });
+            });
+
+            // Tile crop listeners
+            ["Top", "Bottom", "Left", "Right"].forEach((side) => {
+                const lowerSide = side.toLowerCase();
+                document
+                    .getElementById(`tileCrop${side}`)
+                    .addEventListener("input", (e) => {
+                        tileCrop[lowerSide] = parseInt(e.target.value);
+                        if (grid.length > 0 && tilesetImage) drawGrid();
+                        if (tilesetImage) displayTileset();
+                    });
+            });
+
+            document
+                .getElementById("fileInput")
+                .addEventListener("change", handleFile);
+            document
+                .getElementById("imageInput")
+                .addEventListener("change", handleImage);
+            saveButton.addEventListener("click", saveGrid);
+
+            document
+                .getElementById("generateGridButton")
+                .addEventListener("click", generateRandomGrid);
+
+            document
+                .getElementById("downloadPngButton")
+                .addEventListener("click", () => {
+                    const link = document.createElement("a");
+                    link.download = "grid.png";
+                    link.href = canvas.toDataURL("image/png");
+                    link.click();
+                });
+
+            tsvEditor.addEventListener("input", () => {
+                const text = tsvEditor.value.trim();
+                grid = parseText(text);
+                if (tilesetImage) drawGrid();
+            });
+
+            canvas.addEventListener("click", handleCanvasClick);
+
+            function getEffectiveSpritesheetDimensions() {
+                const effectiveWidth =
+                    tilesetImage.width -
+                    spritesheetCrop.left -
+                    spritesheetCrop.right;
+                const effectiveHeight =
+                    tilesetImage.height -
+                    spritesheetCrop.top -
+                    spritesheetCrop.bottom;
+                return { width: effectiveWidth, height: effectiveHeight };
+            }
+
+            function getTileEffectiveSize() {
+                const effectiveWidth =
+                    tileWidth + tileCrop.left + tileCrop.right;
+                const effectiveHeight =
+                    tileHeight + tileCrop.top + tileCrop.bottom;
+                return { width: effectiveWidth, height: effectiveHeight };
+            }
+
+            function getTilesPerRow() {
+                const { width } = getEffectiveSpritesheetDimensions();
+                const { width: effectiveTileWidth } = getTileEffectiveSize();
+                return Math.floor(width / effectiveTileWidth);
+            }
+
+            function handleFile(event) {
+                const file = event.target.files[0];
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const text = e.target.result;
+                    const delimiter = detectDelimiter(text);
+                    const parsedText = text
+                        .split("\n")
+                        .map((line) => line.trim().split(delimiter));
+                    grid = parsedText;
+                    tsvEditor.value = text.replace(
+                        new RegExp(delimiter, "g"),
+                        " ",
+                    );
+                    if (tilesetImage) drawGrid();
+                };
+                reader.readAsText(file);
+            }
+
+            function handleImage(event) {
+                const file = event.target.files[0];
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    tilesetImage = new Image();
+                    tilesetImage.onload = function () {
+                        displayTileset();
+                        if (grid.length > 0) drawGrid();
+                    };
+                    tilesetImage.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+
+            function parseText(text) {
+                return text
+                    .trim()
+                    .split("\n")
+                    .map((line) => line.trim().split(/\s+/));
+            }
+
+            function detectDelimiter(text) {
+                const delimiters = [",", "\t", ";", " "];
+                const counts = delimiters.map((d) => text.split(d).length - 1);
+                const maxCount = Math.max(...counts);
+                return delimiters[counts.indexOf(maxCount)];
+            }
+
+            function drawGrid() {
+                const rows = grid.length;
+                const cols = grid[0].length;
+
+                const canvasWidth = (cols + 1) * tileWidth;
+                const canvasHeight = ((rows + 1) * tileHeight) / 2;
+
+                canvas.width = canvasWidth;
+                canvas.height = canvasHeight;
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                for (let row = 0; row < rows; row++) {
+                    for (let col = 0; col < cols; col++) {
+                        const tileIndex = parseInt(grid[row][col]);
+                        if (!isNaN(tileIndex)) {
+                            const tilesPerRow = getTilesPerRow();
+                            const tileCol = tileIndex % tilesPerRow;
+                            const tileRow = Math.floor(tileIndex / tilesPerRow);
+
+                            const {
+                                width: effectiveTileWidth,
+                                height: effectiveTileHeight,
+                            } = getTileEffectiveSize();
+
+                            const sx =
+                                spritesheetCrop.left +
+                                tileCol * effectiveTileWidth +
+                                tileCrop.left;
+                            const sy =
+                                spritesheetCrop.top +
+                                tileRow * effectiveTileHeight +
+                                tileCrop.top;
+
+                            drawTile(row, col, sx, sy);
+                        }
+                    }
+                }
+            }
+
+            function drawTile(row, col, sx, sy) {
+                const xIso = (col - row) * (tileWidth / 2);
+                const yIso = (col + row) * (tileHeight / 4);
+
+                ctx.drawImage(
+                    tilesetImage,
+                    sx,
+                    sy,
+                    tileWidth,
+                    tileHeight,
+                    xIso + canvas.width / 2 - tileWidth / 2,
+                    yIso,
+                    tileWidth,
+                    tileHeight,
+                );
+            }
+
+            function displayTileset() {
+                tilesetDisplay.innerHTML = "";
+                const { width, height } = getEffectiveSpritesheetDimensions();
+                const {
+                    width: effectiveTileWidth,
+                    height: effectiveTileHeight,
+                } = getTileEffectiveSize();
+
+                const tilesPerRow = Math.floor(width / effectiveTileWidth);
+                const rows = Math.floor(height / effectiveTileHeight);
+                let tileIndex = 0;
+                let totalTiles = 0;
+
+                for (let row = 0; row < rows; row++) {
+                    for (let col = 0; col < tilesPerRow; col++) {
+                        const tileCanvas = document.createElement("canvas");
+                        tileCanvas.width = tileWidth;
+                        tileCanvas.height = tileHeight;
+                        const tileCtx = tileCanvas.getContext("2d");
+
+                        const sx =
+                            spritesheetCrop.left +
+                            col * effectiveTileWidth +
+                            tileCrop.left;
+                        const sy =
+                            spritesheetCrop.top +
+                            row * effectiveTileHeight +
+                            tileCrop.top;
+
+                        tileCtx.drawImage(
+                            tilesetImage,
+                            sx,
+                            sy,
+                            tileWidth,
+                            tileHeight,
+                            0,
+                            0,
+                            tileWidth,
+                            tileHeight,
+                        );
+
+                        const tileDiv = document.createElement("div");
+                        tileDiv.className = "tile";
+
+                        const canvasWrapper = document.createElement("div");
+                        canvasWrapper.className = "tile-canvas-wrapper";
+
+                        tileCanvas.addEventListener("click", () =>
+                            selectTile(tileIndex, tileDiv),
+                        );
+
+                        canvasWrapper.appendChild(tileCanvas);
+                        tileDiv.appendChild(canvasWrapper);
+
+                        const label = document.createElement("div");
+                        label.className = "tile-label";
+                        label.textContent = `Tile ${tileIndex}`;
+                        tileDiv.appendChild(label);
+
+                        tilesetDisplay.appendChild(tileDiv);
+
+                        tileIndex++;
+                        totalTiles++;
+                    }
+                }
+
+                document.getElementById("tileCount").textContent =
+                    `(${totalTiles})`;
+            }
+
+            function selectTile(tileIndex, tileDiv) {
+                selectedTileIndex = tileIndex;
+
+                document.querySelectorAll(".tile canvas").forEach((canvas) => {
+                    canvas.classList.remove("selected-tile");
+                });
+
+                tileDiv.querySelector("canvas").classList.add("selected-tile");
+            }
+
+            function handleCanvasClick(event) {
+                if (selectedTileIndex === null) return;
+
+                const canvasRect = canvas.getBoundingClientRect();
+                const x = event.clientX - canvasRect.left;
+                const y = event.clientY - canvasRect.top;
+
+                const col = Math.floor(x / tileWidth);
+                const row = Math.floor(
+                    (y - (col * tileHeight) / 2) / (tileHeight / 2),
+                );
+
+                if (
+                    row >= 0 &&
+                    row < grid.length &&
+                    col >= 0 &&
+                    col < grid[0].length
+                ) {
+                    grid[row][col] = selectedTileIndex;
+                    tsvEditor.value = grid
+                        .map((row) => row.join(" "))
+                        .join("\n");
+                    drawGrid();
+                }
+            }
+
+            function saveGrid() {
+                const tsvContent = grid.map((row) => row.join("\t")).join("\n");
+                const blob = new Blob([tsvContent], {
+                    type: "text/tab-separated-values",
+                });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "grid.tsv";
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+
+            function generateRandomGrid() {
+                const rows = 20;
+                const cols = 20;
+                const tilesPerRow = getTilesPerRow();
+                const { height } = getEffectiveSpritesheetDimensions();
+                const { height: effectiveTileHeight } = getTileEffectiveSize();
+                const totalRows = Math.floor(height / effectiveTileHeight);
+                const totalTiles = tilesPerRow * totalRows;
+
+                grid = Array.from({ length: rows }, () =>
+                    Array.from({ length: cols }, () =>
+                        Math.floor(Math.random() * Math.max(totalTiles, 1)),
+                    ),
+                );
+                tsvEditor.value = grid.map((row) => row.join(" ")).join("\n");
+                drawGrid();
+            }
+
+            // Zoom controls
+            const zoomSlider = document.getElementById("zoomSlider");
+            const zoomValue = document.getElementById("zoomValue");
+            const zoomInBtn = document.getElementById("zoomInBtn");
+            const zoomOutBtn = document.getElementById("zoomOutBtn");
+            const zoomResetBtn = document.getElementById("zoomResetBtn");
+
+            function updateZoom(newZoom) {
+                currentZoom = Math.max(25, Math.min(400, newZoom));
+                zoomSlider.value = currentZoom;
+                zoomValue.textContent = currentZoom + "%";
+
+                const zoomFactor = currentZoom / 100;
+                canvas.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomFactor})`;
+                canvas.style.transformOrigin = "center top";
+            }
+
+            zoomSlider.addEventListener("input", (e) => {
+                updateZoom(parseInt(e.target.value));
+            });
+
+            zoomInBtn.addEventListener("click", () => {
+                updateZoom(currentZoom + 10);
+            });
+
+            zoomOutBtn.addEventListener("click", () => {
+                updateZoom(currentZoom - 10);
+            });
+
+            zoomResetBtn.addEventListener("click", () => {
+                updateZoom(100);
+                panX = 0;
+                panY = 0;
+                updateZoom(currentZoom);
+            });
+
+            // Textarea collapse/expand toggle
+            const textareaContainer =
+                document.getElementById("textareaContainer");
+            const textareaToggle = document.getElementById("textareaToggle");
+            const toggleIcon = document.getElementById("toggleIcon");
+
+            textareaToggle.addEventListener("click", () => {
+                textareaContainer.classList.toggle("expanded");
+                textareaContainer.classList.toggle("collapsed");
+                toggleIcon.textContent = textareaContainer.classList.contains(
+                    "expanded",
+                )
+                    ? "▲"
+                    : "▼";
+            });
+
+            // Dragging functionality
+            const canvasWrapper = document.getElementById("canvasWrapper");
+
+            canvasWrapper.addEventListener("mousedown", (e) => {
+                isDragging = true;
+                dragStartX = e.clientX;
+                dragStartY = e.clientY;
+                canvasWrapper.classList.add("dragging");
+                e.preventDefault();
+            });
+
+            document.addEventListener("mousemove", (e) => {
+                if (!isDragging) return;
+
+                const deltaX = e.clientX - dragStartX;
+                const deltaY = e.clientY - dragStartY;
+
+                panX += deltaX;
+                panY += deltaY;
+
+                canvas.style.transform = `translate(${panX}px, ${panY}px) scale(${currentZoom / 100})`;
+                canvas.style.transformOrigin = "center top";
+
+                dragStartX = e.clientX;
+                dragStartY = e.clientY;
+            });
+
+            document.addEventListener("mouseup", () => {
+                if (isDragging) {
+                    isDragging = false;
+                    canvasWrapper.classList.remove("dragging");
+                }
+            });
+        </script>
+    </body>
+</html>
