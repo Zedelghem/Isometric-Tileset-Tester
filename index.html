@@ -467,7 +467,14 @@
                 </div>
 
                 <div class="file-input-group">
-                    <label for="fileInput">Grid (.tsv, .csv, space, ;):</label>
+                    <label for="imageInput">Load spritesheet:</label>
+                    <input type="file" id="imageInput" accept="image/*" />
+                </div>
+
+                <div class="file-input-group">
+                    <label for="fileInput"
+                        >Load grid (.tsv, .csv, space, ;):</label
+                    >
                     <input
                         type="file"
                         id="fileInput"
@@ -475,14 +482,10 @@
                     />
                 </div>
 
-                <div class="file-input-group">
-                    <label for="imageInput">Tileset Image:</label>
-                    <input type="file" id="imageInput" accept="image/*" />
-                </div>
-
-                <button id="generateGridButton">Generate 20x20 Grid</button>
+                <button id="generateGridButton">Random 20x20 Grid</button>
                 <button id="saveButton">Save .tsv</button>
                 <button id="downloadPngButton">Download PNG</button>
+                <button id="exportSpritesheetButton">Export Spritesheet</button>
             </div>
 
             <div class="canvas-container">
@@ -663,6 +666,68 @@
                     link.href = canvas.toDataURL("image/png");
                     link.click();
                 });
+
+            document
+                .getElementById("exportSpritesheetButton")
+                .addEventListener("click", exportSpritesheet);
+
+            function exportSpritesheet() {
+                if (!tilesetImage) return;
+
+                const { width: sheetW, height: sheetH } =
+                    getEffectiveSpritesheetDimensions();
+                const {
+                    width: effectiveTileWidth,
+                    height: effectiveTileHeight,
+                } = getTileEffectiveSize();
+
+                const tilesPerRow = Math.floor(sheetW / effectiveTileWidth);
+                const rowCount = Math.floor(sheetH / effectiveTileHeight);
+                const totalTiles = tilesPerRow * rowCount;
+
+                if (totalTiles === 0) return;
+
+                const exportCanvas = document.createElement("canvas");
+                const exportCols = tilesPerRow;
+                const exportRows = rowCount;
+                exportCanvas.width = exportCols * tileWidth;
+                exportCanvas.height = exportRows * tileHeight;
+                const exportCtx = exportCanvas.getContext("2d");
+
+                for (let i = 0; i < totalTiles; i++) {
+                    const srcCol = i % tilesPerRow;
+                    const srcRow = Math.floor(i / tilesPerRow);
+
+                    const sx =
+                        spritesheetCrop.left +
+                        srcCol * effectiveTileWidth +
+                        tileCrop.left;
+                    const sy =
+                        spritesheetCrop.top +
+                        srcRow * effectiveTileHeight +
+                        tileCrop.top;
+
+                    const dx = srcCol * tileWidth;
+                    const dy = srcRow * tileHeight;
+
+                    exportCtx.drawImage(
+                        tilesetImage,
+                        sx,
+                        sy,
+                        tileWidth,
+                        tileHeight,
+                        dx,
+                        dy,
+                        tileWidth,
+                        tileHeight,
+                    );
+                }
+
+                const link = document.createElement("a");
+                link.download = "spritesheet.png";
+                link.href = exportCanvas.toDataURL("image/png");
+                link.click();
+            }
 
             tsvEditor.addEventListener("input", () => {
                 const text = tsvEditor.value.trim();
